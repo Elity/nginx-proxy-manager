@@ -1,0 +1,16 @@
+.git
+**/node_modules
+frontend/dist
+frontend/src/locale/lang
+test
+docs
+backend/test
+**/*.sqlite
+**/*.sqlite-*
+**/.env*
+**/.npmrc
+**/*.pem
+**/*.key
+**/keys.json
+backend/config/local*.json
+backend/config/production.json

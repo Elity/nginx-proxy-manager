@@ -1,0 +1,28 @@
+FROM node:24-bookworm-slim AS frontend
+WORKDIR /build
+COPY frontend/package.json frontend/yarn.lock ./
+RUN yarn install --frozen-lockfile
+COPY frontend/ ./
+RUN yarn locale-compile && yarn build
+
+FROM jc21/nginx-proxy-manager:2.15.1@sha256:52b2c59994f3d36acfcf70a1626f29734df0ed8c71bacc0269f78b6f939858bb AS backend
+WORKDIR /build
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+COPY backend/package.json backend/yarn.lock ./
+RUN yarn install --production --frozen-lockfile && yarn cache clean
+COPY backend/ ./
+RUN node --input-type=module -e 'import Database from "better-sqlite3"; import express from "express"; import * as oidc from "openid-client"; const db=new Database(":memory:"); db.exec("create table smoke (id integer)"); db.close(); if(typeof express!=="function" || typeof oidc.discovery!=="function")process.exit(1)'
+ARG BUILD_COMMIT
+RUN node -e 'const fs=require("fs");const p=require("./package.json");p.version="2.15.1-oidc-"+process.env.BUILD_COMMIT;fs.writeFileSync("package.json",JSON.stringify(p,null,2))'
+
+FROM jc21/nginx-proxy-manager:2.15.1@sha256:52b2c59994f3d36acfcf70a1626f29734df0ed8c71bacc0269f78b6f939858bb
+ARG BUILD_COMMIT
+ARG BUILD_DATE
+ENV NPM_BUILD_VERSION=2.15.1-oidc NPM_BUILD_COMMIT=$BUILD_COMMIT NPM_BUILD_DATE=$BUILD_DATE
+RUN rm -rf /app
+COPY --from=backend /build /app
+COPY --from=frontend /build/dist /app/frontend
+COPY docker/rootfs/ /
+RUN rm -f /etc/nginx/conf.d/dev.conf /etc/s6-overlay/s6-rc.d/user/contents.d/frontend
+WORKDIR /app
+LABEL org.opencontainers.image.source="https://github.com/Elity/nginx-proxy-manager" org.opencontainers.image.revision=$BUILD_COMMIT
