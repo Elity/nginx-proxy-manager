@@ -14,6 +14,6 @@ Test candidates on copies of the data before replacing a production instance.
 Rollback must account for database migrations and preserve edits made after
 deployment; never blindly restore a whole old database over new proxy changes.
 
-OIDC account linking requires an existing local account, its password and any
-enabled NPM two-factor code. Configuring an identity provider never implicitly
+OIDC account linking requires an existing account and a valid authenticated
+NPM session. Configuring an identity provider never implicitly
 grants its users administrator privileges.
